@@ -85,8 +85,12 @@ pipeline {
 
     stage('Sign & Attest'){
       steps {
-        withCredentials([file(credentialsId: 'cosign-private-key', variable: 'COSIGN_KEY')]) {
-          sh """
+        //withCredentials([file(credentialsId: 'cosign-private-key', variable: 'COSIGN_KEY')]) {
+        withCredentials([
+      	    file(credentialsId: 'cosign-private-key', variable: 'COSIGN_KEY'),
+      	    string(credentialsId: 'cosign-password',  variable: 'COSIGN_PASSWORD')
+            ])  
+	    sh """
             DIGEST=\$(crane digest ${REF})
             IMG="${ECR_REPO}@\${DIGEST}"
             cosign sign --key \$COSIGN_KEY \${IMG}
