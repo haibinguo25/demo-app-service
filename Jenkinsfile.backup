@@ -128,25 +128,8 @@ pipeline {
           writeFile file: "deploy-ledger-${TAG}.json", text: payload
         }
         sh """
-	  set -euxo pipefail
-
-      	  echo '== AWS CLI & identity =='
-      	  which aws
-          aws --version
-          aws sts get-caller-identity --region ${AWS_REGION}
-
-          echo '== Files to upload =='
-          ls -l "${SBOM}" || { echo "SBOM not found: ${SBOM}"; exit 2; }
-          ls -l "deploy-ledger-${TAG}.json"
-
-          echo '== Check bucket exists =='
-          aws s3api head-bucket --bucket demo-artifact-audit --region ${AWS_REGION} || {
-          echo 'Bucket not accessible (missing or no permission)'; exit 3;}
-
-          echo '== Uploading =='
-          aws s3 cp "${SBOM}" "s3://demo-artifact-audit/sbom/${APP}/${TAG}.json" --sse AES256 --region ${AWS_REGION}
-
-          aws s3 cp "deploy-ledger-${TAG}.json" "s3://demo-artifact-audit/deploy-ledger/${APP}/" --sse AES256 --region ${AWS_REGION}
+          aws s3 cp ${SBOM} s3://demo-artifact-audit/sbom/${APP}/${TAG}.json --sse AES256
+          aws s3 cp deploy-ledger-${TAG}.json s3://demo-artifact-audit/deploy-ledger/${APP}/ --sse AES256
         """
       }
     }
