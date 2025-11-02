@@ -48,7 +48,7 @@ pipeline {
         set -euxo pipefail
         pwd; ls -la
         test -f Dockerfile
-        docker build --pull --progress=plain -t "${REF}" .
+        docker build --pull -t "${REF}" .
     '''
       }
      }
