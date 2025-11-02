@@ -23,6 +23,7 @@ pipeline {
     PROD_HOST    = '172.31.24.219'                          // 可与 STAGING_HOST 相同
     STAGING_PORT = '8088'
     PROD_PORT    = '8089'
+    PATH = "/home/jenkins/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
   }
   
 
