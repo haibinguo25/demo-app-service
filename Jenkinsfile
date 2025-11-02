@@ -1,5 +1,5 @@
 pipeline {
-  agent any
+  agent {label 'docker-agent'}
   options { timestamps() }
   parameters {
     choice(name: 'ENV', choices: ['staging','prod'], description: 'Deploy environment')
@@ -8,7 +8,7 @@ pipeline {
   environment {
     // ====== 替换占位符 ======
     AWS_REGION  = 'us-west-1'                          // e.g. us-west-2
-    REGISTRY    = '163887847484.dkr.ecr.${AWS_REGION}.amazonaws.com'
+    REGISTRY    = "163887847484.dkr.ecr.${AWS_REGION}.amazonaws.com"
     ECR_REPO    = "${REGISTRY}/demo-app-service"               // e.g. demo-app-service
     // =======================
 
