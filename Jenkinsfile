@@ -6,22 +6,29 @@ pipeline {
     string(name: 'SEMVER', defaultValue: '1.0.0', description: 'Release semver, e.g. 1.0.0')
   }
   environment {
-    AWS_REGION  = '<AWS_REGION>' // e.g. us-west-2
-    REGISTRY    = '<AWS_ACC_ID>.dkr.ecr.${AWS_REGION}.amazonaws.com'
-    ECR_REPO    = '${REGISTRY}/<ECR_REPO>' // e.g. demo-app-service
+    // ====== 替换占位符 ======
+    AWS_REGION  = 'us-west-1'                          // e.g. us-west-2
+    REGISTRY    = '163887847484.dkr.ecr.${AWS_REGION}.amazonaws.com'
+    ECR_REPO    = "${REGISTRY}/demo-app-service"               // e.g. demo-app-service
+    // =======================
+
     APP         = 'demo-app-service'
     TAG         = "${params.SEMVER}+g${GIT_COMMIT.take(7)}"
     REF         = "${ECR_REPO}:${TAG}"
     SBOM        = "sbom-${TAG}.json"
     COSIGN_EXPERIMENTAL = "1"
+
+    // 同机并存：不同容器名 + 不同端口
+    STAGING_HOST = '172.31.24.219'                       // e.g. 172.31.10.200
+    PROD_HOST    = '172.31.24.219'                          // 可与 STAGING_HOST 相同
+    STAGING_PORT = '8088'
+    PROD_PORT    = '8089'
   }
 
   stages {
     stage('Checkout'){ steps { checkout scm } }
 
-    stage('Build'){
-      steps { sh "docker build --pull -t ${REF} ." }
-    }
+    stage('Build'){ steps { sh "docker build --pull -t ${REF} ." } }
 
     stage('Push to ECR'){
       steps {
@@ -33,14 +40,14 @@ pipeline {
       }
     }
 
-    stage('Generate SBOM'){
+    stage('Generate SBOM (CycloneDX)'){
       steps {
         sh "syft ${REF} -o cyclonedx-json > ${SBOM}"
         archiveArtifacts artifacts: "${SBOM}", fingerprint: true
       }
     }
 
-    stage('Vulnerability Scan'){
+    stage('Vulnerability Scan (HIGH/CRITICAL fail)'){
       steps {
         sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${REF}"
       }
@@ -52,7 +59,6 @@ pipeline {
           sh """
             DIGEST=\$(crane digest ${REF})
             IMG="${ECR_REPO}@\${DIGEST}"
-
             cosign sign --key \$COSIGN_KEY \${IMG}
 
             cat > provenance.json <<'JSON'
@@ -74,23 +80,28 @@ pipeline {
       steps { input message: "Approve PROD deploy for ${APP} ${TAG}?" }
     }
 
-    stage('Deploy'){
+    stage('Deploy (isolated by port)'){
       steps {
+        script {
+          env.TARGET_HOST = (params.ENV == 'prod') ? env.PROD_HOST : env.STAGING_HOST
+          env.TARGET_PORT = (params.ENV == 'prod') ? env.PROD_PORT : env.STAGING_PORT
+          env.TARGET_NAME = "${APP}-${params.ENV}"
+        }
         sshagent(credentials: ['deploy-ssh']) {
           sh """
+            set -euo pipefail
             DIGEST=\$(crane digest ${REF})
             IMG="${ECR_REPO}@\${DIGEST}"
+
             cosign verify --key cosign.pub \${IMG}
 
-            TARGET_HOST=\$( [ "${params.ENV}" = "prod" ] && echo "<PROD_HOST>" || echo "<STAGING_HOST>" )
-
-            ssh -o StrictHostKeyChecking=yes ec2-user@\${TARGET_HOST} '
+            ssh -o StrictHostKeyChecking=yes ec2-user@${TARGET_HOST} '
               set -euo pipefail
               aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${REGISTRY}
               docker pull \${IMG}
-              docker stop ${APP} || true
-              docker rm ${APP} || true
-              docker run -d --name ${APP} -p 80:8080 --restart=always \${IMG}
+              docker stop ${TARGET_NAME} || true
+              docker rm ${TARGET_NAME} || true
+              docker run -d --name ${TARGET_NAME} -p ${TARGET_PORT}:8080 --restart=always \${IMG}
             '
           """
         }
@@ -105,8 +116,11 @@ pipeline {
             app: env.APP,
             tag: env.TAG,
             commit: env.GIT_COMMIT,
-            digest_ref: "${env.ECR_REPO}",
+            digest_ref: env.ECR_REPO,
             env: params.ENV,
+            target_host: env.TARGET_HOST,
+            target_port: env.TARGET_PORT,
+            container: env.TARGET_NAME,
             triggered_by: who,
             build: env.BUILD_NUMBER,
             at: new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'", TimeZone.getTimeZone("UTC"))
@@ -122,6 +136,9 @@ pipeline {
   }
 
   post {
-    success { echo "✅ ${APP} ${TAG} deployed to ${params.ENV}" }
+    success {
+      echo "✅ ${APP} ${TAG} deployed: ${params.ENV} → ${TARGET_HOST}:${TARGET_PORT} (container: ${TARGET_NAME})"
+    }
   }
 }
+

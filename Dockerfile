@@ -3,5 +3,5 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
 COPY . .
-EXPOSE 8080
+EXPOSE 8088
 CMD ["npm", "start"]
