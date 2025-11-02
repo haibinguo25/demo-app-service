@@ -25,21 +25,22 @@ pipeline {
     PROD_PORT    = '8089'
   }
   
-  stage('Validate image tag') {
-  steps {
-    sh '''
-      set -e
-      echo "TAG=${TAG}"
-      if echo "${TAG}" | grep -q '[^a-z0-9_.-]'; then
-        echo "❌ Invalid Docker tag: ${TAG}"
-        exit 125
-      fi
-    '''
-     }
-   }
 
   stages {
     stage('Checkout'){ steps { checkout scm } }
+
+    stage('Validate image tag') {
+       steps {
+        sh '''
+        set -e
+        echo "TAG=${TAG}"
+        if echo "${TAG}" | grep -q '[^a-z0-9_.-]'; then
+        echo "❌  Invalid Docker tag: ${TAG}"
+        exit 125
+      fi
+    '''
+       }
+     }
 
     stage('Build') {
        steps {
