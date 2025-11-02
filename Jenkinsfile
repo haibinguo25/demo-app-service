@@ -13,7 +13,8 @@ pipeline {
     // =======================
 
     APP         = 'demo-app-service'
-    TAG         = "${params.SEMVER}-g${GIT_COMMIT.take(7)}"
+    //TAG         = "${params.SEMVER}-g${GIT_COMMIT.take(7)}"
+    TAG = "${params.SEMVER}-g${GIT_COMMIT.take(7)}-b${BUILD_NUMBER}"
     REF         = "${ECR_REPO}:${TAG}"
     SBOM        = "sbom-${TAG}.json"
     COSIGN_EXPERIMENTAL = "1"
