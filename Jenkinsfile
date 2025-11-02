@@ -13,7 +13,7 @@ pipeline {
     // =======================
 
     APP         = 'demo-app-service'
-    TAG         = "${params.SEMVER}+g${GIT_COMMIT.take(7)}"
+    TAG         = "${params.SEMVER}-g${GIT_COMMIT.take(7)}"
     REF         = "${ECR_REPO}:${TAG}"
     SBOM        = "sbom-${TAG}.json"
     COSIGN_EXPERIMENTAL = "1"
@@ -24,11 +24,34 @@ pipeline {
     STAGING_PORT = '8088'
     PROD_PORT    = '8089'
   }
+  
+  stage('Validate image tag') {
+  steps {
+    sh '''
+      set -e
+      echo "TAG=${TAG}"
+      if echo "${TAG}" | grep -q '[^a-z0-9_.-]'; then
+        echo "❌ Invalid Docker tag: ${TAG}"
+        exit 125
+      fi
+    '''
+     }
+   }
 
   stages {
     stage('Checkout'){ steps { checkout scm } }
 
-    stage('Build'){ steps { sh "docker build --pull -t ${REF} ." } }
+    stage('Build') {
+       steps {
+        sh '''
+        set -euxo pipefail
+        pwd; ls -la
+        test -f Dockerfile
+        docker build --pull --progress=plain -t "${REF}" .
+    '''
+      }
+     }
+
 
     stage('Push to ECR'){
       steps {
