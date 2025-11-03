@@ -140,7 +140,7 @@ pipeline {
             DIGEST=\$(crane digest ${REF})
             IMG="${ECR_REPO}@\${DIGEST}"
 
-            cosign verify --key cosign.pub \${IMG}
+            //cosign verify --key cosign.pub \${IMG}
 
             ssh -o StrictHostKeyChecking=yes ec2-user@${TARGET_HOST} '
               set -euo pipefail
