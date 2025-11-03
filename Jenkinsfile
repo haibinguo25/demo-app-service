@@ -104,6 +104,13 @@ pipeline {
             cosign attest --type slsaprovenance --predicate provenance.json \${IMG}
           """
         }
+        // 👇 加在这里（签完之后立即验签）
+       withCredentials([file(credentialsId: 'cosign-pub', variable: 'COSIGN_PUB')]) {
+           sh '''
+           set -euxo pipefail
+           /home/jenkins/bin/cosign verify --key "$COSIGN_PUB" "${ECR_REPO}@$(/home/jenkins/bin/crane digest "${REF}")"
+      '''
+	}
       }
     }
 
