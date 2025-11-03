@@ -86,13 +86,19 @@ pipeline {
     stage('Sign & Attest'){
       steps {
         //withCredentials([file(credentialsId: 'cosign-private-key', variable: 'COSIGN_KEY')]) {
-        withCredentials([file(credentialsId: 'cosign-private-key', variable: 'COSIGN_KEY'),string(credentialsId: 'cosign-password',  variable: 'COSIGN_PASSWORD')
+        withCredentials([
+            file(credentialsId: 'cosign-private-key', variable: 'COSIGN_KEY'),
+            string(credentialsId: 'cosign-password',  variable: 'COSIGN_PASSWORD'),
+            file(credentialsId: 'cosign-pub', variable: 'COSIGN_PUB')
             ]){  
 	    sh """
             DIGEST=\$(crane digest ${REF})
             IMG="${ECR_REPO}@\${DIGEST}"
             cosign sign --key \$COSIGN_KEY \${IMG}
-
+            export COSIGN_EXPERIMENTAL=1
+            export COSIGN_PASSWORD="${COSIGN_PASSWORD}"
+            /home/jenkins/bin/cosign sign --yes --key "$COSIGN_KEY" "${IMG}"
+           
             cat > provenance.json <<'JSON'
             {
               "buildType":"jenkins",
@@ -101,15 +107,17 @@ pipeline {
               "artifact":{"image":"${REF}"}
             }
             JSON
-            cosign attest --type slsaprovenance --predicate provenance.json \${IMG}
+          
+            /home/jenkins/bin/cosign attest --yes --key "$COSIGN_KEY" \
+          --type slsaprovenance --predicate provenance.json "${IMG}"
+
+            echo "Verifying signature for ${IMG} ..."
+            /home/jenkins/bin/cosign verify --key "$COSIGN_PUB" "${IMG}" | tee verify-${TAG}.txt
+            cp "$COSIGN_PUB" cosign-${TAG}.pub
+
           """
         }
-        // 👇 加在这里（签完之后立即验签）
-       withCredentials([file(credentialsId: 'cosign-pub', variable: 'COSIGN_PUB')]) {
-           sh '''
-           set -euxo pipefail
-           /home/jenkins/bin/cosign verify --key "$COSIGN_PUB" "${ECR_REPO}@$(/home/jenkins/bin/crane digest "${REF}")"
-      '''
+	archiveArtifacts artifacts: "verify-*.txt, cosign-*.pub, provenance.json", fingerprint: true
 	}
       }
     }
