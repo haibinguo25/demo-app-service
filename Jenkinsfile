@@ -136,6 +136,7 @@ pipeline {
           env.TARGET_USER= (params.ENV == 'prod') ? 'ubuntu' : env.STAGING_USER
           env.TARGET_PORT = (params.ENV == 'prod') ? env.PROD_PORT : env.STAGING_PORT
           env.TARGET_NAME = "${APP}-${params.ENV}"
+	  env.REGISTRY = env.ECR_REPO.split('/')[0]
         }
         sshagent(credentials: ['deploy-ssh']) {
           sh """
@@ -143,17 +144,15 @@ pipeline {
             DIGEST=\$(crane digest ${REF})
             IMG="${ECR_REPO}@\${DIGEST}"
 
-            #cosign verify --key cosign.pub \${IMG}
 
-            #ssh -o StrictHostKeyChecking=yes ec2-user@${TARGET_HOST} '
-            ssh ${TARGET_USER}@${TARGET_HOST} '
+            ssh ${TARGET_USER}@${TARGET_HOST} "IMG='\${IMG}' AWS_REGION='${AWS_REGION}' REGISTRY='${REGISTRY}' TARGET_NAME='${TARGET_NAME}' TARGET_PORT='${TARGET_PORT}' bash -s" <<'EOS'
               set -euo pipefail
               aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${REGISTRY}
               docker pull \${IMG}
               docker stop ${TARGET_NAME} || true
               docker rm ${TARGET_NAME} || true
               docker run -d --name ${TARGET_NAME} -p ${TARGET_PORT}:8080 --restart=always \${IMG}
-            '
+            EOS
           """
         }
       }
