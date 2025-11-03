@@ -92,12 +92,16 @@ pipeline {
             file(credentialsId: 'cosign-pub', variable: 'COSIGN_PUB')
             ]){  
 	    sh '''
+            set -euxo pipefail
+
             DIGEST=\$(crane digest ${REF})
             IMG="${ECR_REPO}@\${DIGEST}"
             cosign sign --key \$COSIGN_KEY \${IMG}
             export COSIGN_EXPERIMENTAL=1
             export COSIGN_PASSWORD="${COSIGN_PASSWORD}"
             /home/jenkins/bin/cosign sign --yes --key "$COSIGN_KEY" "${IMG}"
+	    /home/jenkins/bin/cosign attest --yes --key "$COSIGN_KEY" --type slsaprovenance --predicate provenance.json "$IMG"
+            /home/jenkins/bin/cosign verify --key "$COSIGN_PUB" "$IMG" | tee "verify-${TAG}.txt"
            
             cat > provenance.json <<'JSON'
             {
