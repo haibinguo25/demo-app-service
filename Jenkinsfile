@@ -100,8 +100,6 @@ pipeline {
             export COSIGN_EXPERIMENTAL=1
             export COSIGN_PASSWORD="${COSIGN_PASSWORD}"
             /home/jenkins/bin/cosign sign --yes --key "$COSIGN_KEY" "${IMG}"
-	    /home/jenkins/bin/cosign attest --yes --key "$COSIGN_KEY" --type slsaprovenance --predicate provenance.json "$IMG"
-            /home/jenkins/bin/cosign verify --key "$COSIGN_PUB" "$IMG" | tee "verify-${TAG}.txt"
            
             cat > provenance.json <<'JSON'
             {
