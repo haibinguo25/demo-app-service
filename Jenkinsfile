@@ -22,7 +22,9 @@ pipeline {
     // 同机并存：不同容器名 + 不同端口
     STAGING_HOST = '172.31.24.219'                       // e.g. 172.31.10.200
     PROD_HOST    = '172.31.24.219'                          // 可与 STAGING_HOST 相同
+    STAGING_USER = 'ubuntu'
     STAGING_PORT = '8088'
+    PROD_USER = 'ubuntu'
     PROD_PORT    = '8089'
     PATH = "/home/jenkins/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
   }
@@ -131,6 +133,7 @@ pipeline {
       steps {
         script {
           env.TARGET_HOST = (params.ENV == 'prod') ? env.PROD_HOST : env.STAGING_HOST
+          env.TARGET_USER= (params.ENV == 'prod') ? 'ubuntu' : env.STAGING_USER
           env.TARGET_PORT = (params.ENV == 'prod') ? env.PROD_PORT : env.STAGING_PORT
           env.TARGET_NAME = "${APP}-${params.ENV}"
         }
@@ -142,7 +145,8 @@ pipeline {
 
             #cosign verify --key cosign.pub \${IMG}
 
-            ssh -o StrictHostKeyChecking=yes ec2-user@${TARGET_HOST} '
+            #ssh -o StrictHostKeyChecking=yes ec2-user@${TARGET_HOST} '
+            ssh ${TARGET_USER}@${TARGET_HOST} '
               set -euo pipefail
               aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${REGISTRY}
               docker pull \${IMG}
