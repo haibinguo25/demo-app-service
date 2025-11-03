@@ -91,7 +91,7 @@ pipeline {
             string(credentialsId: 'cosign-password',  variable: 'COSIGN_PASSWORD'),
             file(credentialsId: 'cosign-pub', variable: 'COSIGN_PUB')
             ]){  
-	    sh """
+	    sh '''
             DIGEST=\$(crane digest ${REF})
             IMG="${ECR_REPO}@\${DIGEST}"
             cosign sign --key \$COSIGN_KEY \${IMG}
@@ -114,7 +114,7 @@ pipeline {
             /home/jenkins/bin/cosign verify --key "$COSIGN_PUB" "${IMG}" | tee verify-${TAG}.txt
             cp "$COSIGN_PUB" cosign-${TAG}.pub
 
-          """
+          '''
         }
 	archiveArtifacts artifacts: "verify-*.txt, cosign-*.pub, provenance.json", fingerprint: true
       }
