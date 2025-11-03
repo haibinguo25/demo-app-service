@@ -108,8 +108,7 @@ pipeline {
             }
             JSON
           
-            /home/jenkins/bin/cosign attest --yes --key "$COSIGN_KEY" \
-          --type slsaprovenance --predicate provenance.json "${IMG}"
+            /home/jenkins/bin/cosign attest --yes --key "$COSIGN_KEY" --type slsaprovenance --predicate provenance.json "${IMG}"
 
             echo "Verifying signature for ${IMG} ..."
             /home/jenkins/bin/cosign verify --key "$COSIGN_PUB" "${IMG}" | tee verify-${TAG}.txt
@@ -118,7 +117,6 @@ pipeline {
           """
         }
 	archiveArtifacts artifacts: "verify-*.txt, cosign-*.pub, provenance.json", fingerprint: true
-	}
       }
     }
 
