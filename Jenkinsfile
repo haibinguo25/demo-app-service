@@ -152,7 +152,7 @@ pipeline {
               docker stop ${TARGET_NAME} || true
               docker rm ${TARGET_NAME} || true
               docker run -d --name ${TARGET_NAME} -p ${TARGET_PORT}:8080 --restart=always \${IMG}
-          EOS
+EOS
           """
         }
       }
