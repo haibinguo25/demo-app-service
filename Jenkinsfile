@@ -161,7 +161,18 @@ EOS
     stage('Upload Audit Evidence'){
       steps {
         script {
-          def who = currentBuild.rawBuild.getCause(hudson.model.Cause$UserIdCause)?.userId ?: 'automation'
+          def who = 'automation'
+      	  try {
+              def causes = currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause')
+              if (causes && !causes.isEmpty()) {
+                who = causes[0]?.userId ?: causes[0]?.userName ?: who
+              } else if (env.BUILD_USER_ID) {
+                who = env.BUILD_USER_ID
+              }
+          } catch (ignored) {
+            who = env.BUILD_USER_ID ?: who
+          }
+
           def payload = groovy.json.JsonOutput.toJson([
             app: env.APP,
             tag: env.TAG,
