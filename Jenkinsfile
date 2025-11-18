@@ -20,8 +20,8 @@ pipeline {
     COSIGN_EXPERIMENTAL = "1"
 
     // 同机并存：不同容器名 + 不同端口
-    STAGING_HOST = '172.31.24.219'                       // e.g. 172.31.10.200
-    PROD_HOST    = '172.31.24.219'                          // 可与 STAGING_HOST 相同
+    STAGING_HOST = '172.31.24.186'                       // e.g. 172.31.10.200
+    PROD_HOST    = '172.31.24.186'                          // 可与 STAGING_HOST 相同
     STAGING_USER = 'ubuntu'
     STAGING_PORT = '8088'
     PROD_USER = 'ubuntu'
