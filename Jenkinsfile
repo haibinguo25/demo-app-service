@@ -1,5 +1,5 @@
 pipeline {
-  agent {label 'docker-agent'}
+  agent {label 'agent-ec2-b1'}
   options { timestamps() }
   parameters {
     choice(name: 'ENV', choices: ['staging','prod'], description: 'Deploy environment')
